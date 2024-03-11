@@ -22,8 +22,11 @@ struct query_engine_t {
   struct buf * (*serialize)(void *, void *);
   void       * (*deserialize)(struct buf *, void *);
   void         (*purge)(void *);
+  void       * index;
   void       * udata;
 };
+
+
 
 struct query_engine_t * qe_init(const char **filename, struct buf * (*serialize)(void *), void * (*deserialize)(struct buf *, void*), void (*purge)(void*, void*), void *udata);
 QUERY_ENGINE_RETURN_CODE qe_close(struct query_engine_t *instance);
