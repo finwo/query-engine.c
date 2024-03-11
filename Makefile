@@ -6,15 +6,21 @@ CC?=gcc
 TAIL=$(shell command -v gtail tail | head -1)
 HEAD=$(shell command -v ghead head | head -1)
 
-override CFLAGS?=-Wall -s -O2
+override CFLAGS?=-Wall -O2
+override LDFLAGS?=-s
 
 include lib/.dep/config.mk
+
+OBJ=$(SRC:.c=.o)
 
 .PHONY: default
 default: README.md ${BIN}
 
-${BIN}: ${SRC} src/query-engine.h
-	${CC} -Isrc ${INCLUDES} ${CFLAGS} -o $@ ${SRC}
+.c.o:
+	$(CC) $< $(CFLAGS) -c -o $@
+
+${BIN}: ${OBJ} src/query-engine.h
+	${CC} -Isrc ${INCLUDES} ${CFLAGS} -o $@ ${OBJ}
 
 .PHONY: check
 check: ${BIN}
@@ -23,6 +29,7 @@ check: ${BIN}
 .PHONY: clean
 clean:
 	rm -f ${BIN}
+	rm -f ${OBJ}
 
 README.md: ${SRC} src/query-engine.h
 	stddoc < src/query-engine.h > README.md
