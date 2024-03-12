@@ -17,8 +17,14 @@ extern "C" {
 #define QUERY_ENGINE_RETURN_OK     0
 #define QUERY_ENGINE_RETURN_ERR   -1
 
+#define QUERY_ENGINE_STATE_STATE        int
+#define QUERY_ENGINE_STATE_INITIALIZING 0
+#define QUERY_ENGINE_STATE_RUNNING      1
+#define QUERY_ENGINE_STATE_CLOSING      2
+
 struct query_engine_t {
   PALLOC_FD fd;
+  QUERY_ENGINE_STATE_STATE state;
   struct buf * (*serialize)(void *, void *);
   void       * (*deserialize)(struct buf *, void *);
   void         (*purge)(void *, void *);
