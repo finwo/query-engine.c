@@ -19,6 +19,11 @@ struct qe_index {
   const struct query_engine_t *qe;
 };
 
+struct qe_index_entry {
+  PALLOC_OFFSET ptr;
+  void *hydrated;
+};
+
 /* struct query_engine_t { */
 /*   PALLOC_FD fd; */
 /*   struct buf * (*serialize)(void *, void *); */
@@ -29,6 +34,7 @@ struct qe_index {
 /* }; */
 
 int cmp_internal(const void *a, const void *b, void *idx) {
+  // TODO: read data from palloc
   struct qe_index *index = (struct qe_index *)idx;
   return index->cmp(a, b, index->qe->udata, index->udata);
 }
