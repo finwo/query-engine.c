@@ -64,7 +64,6 @@ struct qe_index {
   char            *name;
   void            *udata;
   struct mindex_t *mindex;
-  QUERY_ENGINE_STATE_STATE state;
   int (*cmp)(const void *a, const void *b, void *udata_qe, void *udata_idx);
   const struct query_engine_t *qe;
 };
@@ -148,7 +147,7 @@ void purge_internal(void *sub, void *idx) {
 
   if (subject->hydrated) {
     // This is a search pattern, do not free
-  } else if (index->state != QUERY_ENGINE_STATE_CLOSING) {
+  } else {
     pfree(index->qe->fd, subject->ptr);
     free(subject);
   }
@@ -238,7 +237,7 @@ QUERY_ENGINE_RETURN_CODE qe_index_del(struct query_engine_t *instance, const cha
   }
 
   // Prevents the purge from removing data from medium
-  idx->state = QUERY_ENGINE_STATE_CLOSING;
+  idx->mindex->purge = NULL;
 
   // And free the index's memory
   mindex_free(idx->mindex);
@@ -249,8 +248,47 @@ QUERY_ENGINE_RETURN_CODE qe_index_del(struct query_engine_t *instance, const cha
   return QUERY_ENGINE_RETURN_OK;
 }
 
-void * qe_set(struct query_engine_t *instance, void *entry) {
-  return NULL;
+QUERY_ENGINE_RETURN_CODE qe_set(struct query_engine_t *instance, void *entry) {
+  if (!(instance->index)) {
+    return QUERY_ENGINE_RETURN_ERR;
+  }
+
+  // Turn into something we can write to disk
+  struct buf *serialized = instance->serialize(entry, instance->udata);
+
+  // Reserve persistent allocation
+  PALLOC_OFFSET off = palloc(instance->fd, serialized->len);
+  if (!off) {
+    buf_clear(serialized);
+    free(serialized);
+    return QUERY_ENGINE_RETURN_ERR;
+  }
+
+  // Actually write to persistent storage
+  seek_os(instance->fd, off, SEEK_SET);
+  if (write_os(instance->fd, serialized->data, serialized->len) != serialized->len) {
+    // TODO: handle gracefully
+    buf_clear(serialized);
+    free(serialized);
+    return QUERY_ENGINE_RETURN_ERR;
+  }
+
+  // We no longer need the serialized data
+  buf_clear(serialized);
+  free(serialized);
+
+  struct qe_index_entry *index_entry = calloc(1, sizeof(struct qe_index_entry));
+  index_entry->ptr                   = off;
+
+  // Add to all indexes
+  // (auto-purges if duplicate found)
+  struct qe_index *idx = instance->index;
+  while(idx) {
+    mindex_set(idx->mindex, index_entry);
+    idx = idx->next;
+  }
+
+  return QUERY_ENGINE_RETURN_OK;
 }
 
 QUERY_ENGINE_RETURN_CODE qe_del(struct query_engine_t *instance, void *entry) {

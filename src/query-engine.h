@@ -17,14 +17,8 @@ extern "C" {
 #define QUERY_ENGINE_RETURN_OK     0
 #define QUERY_ENGINE_RETURN_ERR   -1
 
-#define QUERY_ENGINE_STATE_STATE        int
-#define QUERY_ENGINE_STATE_INITIALIZING 0
-#define QUERY_ENGINE_STATE_RUNNING      1
-#define QUERY_ENGINE_STATE_CLOSING      2
-
 struct query_engine_t {
   PALLOC_FD fd;
-  QUERY_ENGINE_STATE_STATE state;
   struct buf * (*serialize)(void *, void *);
   void       * (*deserialize)(struct buf *, void *);
   void         (*purge)(void *, void *);
@@ -38,7 +32,7 @@ QUERY_ENGINE_RETURN_CODE qe_close(struct query_engine_t *instance);
 QUERY_ENGINE_RETURN_CODE qe_index_add(struct query_engine_t *instance, const char *name, int (*cmp)(const void *a, const void *b, void *udata_qe, void *udata_index), void *udata);
 QUERY_ENGINE_RETURN_CODE qe_index_del(struct query_engine_t *instance, const char *name);
 
-void * qe_set(struct query_engine_t *instance, void *entry);
+QUERY_ENGINE_RETURN_CODE qe_set(struct query_engine_t *instance, void *entry);
 QUERY_ENGINE_RETURN_CODE qe_del(struct query_engine_t *instance, void *entry);
 void * qe_query_run(struct query_engine_t *instance, const char *index, void *pattern);
 

@@ -18,7 +18,7 @@ struct entry {
 };
 
 struct buf * serialize(void *entry_raw, void *udata) {
-  ASSERT("QE userdata is correct", udata == QEUD_A) NULL;
+  ASSERT("_ser:: QE userdata is correct", udata == QEUD_A) NULL;
   struct entry *entry = (struct entry *)entry_raw;
   struct buf   *output = calloc(1, sizeof(struct buf));
   buf_append(output, entry->name, strlen(entry->name));
@@ -28,7 +28,7 @@ struct buf * serialize(void *entry_raw, void *udata) {
 }
 
 void * deserialize(struct buf *raw, void *udata) {
-  ASSERT("QE userdata is correct", udata == QEUD_A) NULL;
+  ASSERT("_des:: QE userdata is correct", udata == QEUD_A) NULL;
   struct entry *output = calloc(1, sizeof(struct entry));
   struct buf   *dupped = calloc(1, sizeof(struct buf));
   output->data         = calloc(1, sizeof(struct buf));
@@ -43,8 +43,8 @@ void * deserialize(struct buf *raw, void *udata) {
 }
 
 int cmp(const void *a, const void *b, void *udata_qe, void *udata_idx) {
-  ASSERT("QE userdata is correct", udata_qe  == QEUD_A) 0;
-  ASSERT("QE userdata is correct", udata_idx == QEUD_B) 0;
+  ASSERT("_cmp:: QE  userdata is correct", udata_qe  == QEUD_A) 0;
+  ASSERT("_cmp:: IDX userdata is correct", udata_idx == QEUD_B) 0;
   struct entry *ea = (struct entry *)a;
   struct entry *eb = (struct entry *)b;
   return strcmp(ea->name, eb->name);
