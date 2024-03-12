@@ -42,10 +42,12 @@ void * deserialize(struct buf *raw, void *udata) {
   return output;
 }
 
-int cmp(void *a, void *b, void *udata_qe, void *udata_idx) {
+int cmp(const void *a, const void *b, void *udata_qe, void *udata_idx) {
   ASSERT("QE userdata is correct", udata_qe  == QEUD_A) 0;
   ASSERT("QE userdata is correct", udata_idx == QEUD_B) 0;
-  return 0;
+  struct entry *ea = (struct entry *)a;
+  struct entry *eb = (struct entry *)b;
+  return strcmp(ea->name, eb->name);
 }
 
 void purge(void *entry_raw, void *udata) {
@@ -63,6 +65,10 @@ void test_main() {
 
   ASSERT("Adding the 'nam' index returns OK"       , qe_index_add(qe, "nam", &cmp, QEUD_B) == QUERY_ENGINE_RETURN_OK );
   ASSERT("Adding duplicate 'nam' index returns ERR", qe_index_add(qe, "nam", &cmp, QEUD_B) == QUERY_ENGINE_RETURN_ERR);
+
+  ASSERT("Removing 'nam' index returns OK"       , qe_index_del(qe, "nam") == QUERY_ENGINE_RETURN_OK);
+  ASSERT("Removing non-existing index returns OK", qe_index_del(qe, "nam") == QUERY_ENGINE_RETURN_OK);
+  ASSERT("Re-adding 'nam' index return OK"       , qe_index_add(qe, "nam", &cmp, QEUD_B) == QUERY_ENGINE_RETURN_OK );
 
   struct entry *e_00 = calloc(1, sizeof(struct entry));
   e_00->name = strdup("pizza");

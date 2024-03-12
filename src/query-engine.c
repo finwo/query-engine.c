@@ -15,7 +15,7 @@ struct qe_index {
   char            *name;
   void            *udata;
   struct mindex_t *mindex;
-  const int (*cmp)(const void *a, const void *b, void *udata_qe, void *udata_idx);
+  int (*cmp)(const void *a, const void *b, void *udata_qe, void *udata_idx);
   const struct query_engine_t *qe;
 };
 
@@ -38,14 +38,7 @@ void purge_internal(void *subject, void *idx) {
   return index->qe->purge(subject, index->qe->udata);
 }
 
-struct query_engine_t * qe_init(
-  const char *filename,
-  const struct buf * (*serialize)(void *, void *),
-  const void * (*deserialize)(struct buf *, void*),
-  const void (*purge)(void*, void*),
-  void *udata,
-  PALLOC_FLAGS flags
-) {
+struct query_engine_t * qe_init(const char *filename, struct buf * (*serialize)(void *, void *), void * (*deserialize)(struct buf *, void*), void (*purge)(void*, void*), void *udata, PALLOC_FLAGS flags) {
   struct query_engine_t *instance = calloc(1, sizeof(struct query_engine_t));
 
   // Build our response
@@ -70,9 +63,10 @@ QUERY_ENGINE_RETURN_CODE qe_close(struct query_engine_t *instance) {
 QUERY_ENGINE_RETURN_CODE qe_index_add(
   struct query_engine_t *instance,
   const char *name,
-  const int (*cmp)(const void *a, const void *b, void *udata_qe, void *udata_index),
+  int (*cmp)(const void *a, const void *b, void *udata_qe, void *udata_index),
   void *udata
 ) {
+
   // Find if the index already exists
   struct qe_index *idx = instance->index;
   while(idx) {
@@ -103,6 +97,32 @@ QUERY_ENGINE_RETURN_CODE qe_index_add(
 }
 
 QUERY_ENGINE_RETURN_CODE qe_index_del(struct query_engine_t *instance, const char *name) {
+  // Find if the index even exists
+  struct qe_index *idx_prev = NULL;
+  struct qe_index *idx      = instance->index;
+  while(idx) {
+    if (strcmp(idx->name,name) == 0) break;
+    idx_prev = idx;
+    idx      = idx->next;
+  }
+  if (!idx) {
+    /* fprintf(stderr,"Duplicate index '%s'", name); */
+    return QUERY_ENGINE_RETURN_OK;
+  }
+
+  // Remove the index from the list
+  if (idx_prev) {
+    idx_prev->next = idx->next;
+  } else {
+    instance->index = idx->next;
+  }
+
+  // And free the index's memory
+  mindex_free(idx->mindex);
+  free(idx->name);
+  free(idx);
+
+  // Done
   return QUERY_ENGINE_RETURN_OK;
 }
 
