@@ -184,6 +184,12 @@ QUERY_ENGINE_RETURN_CODE qe_index_add(
   void *udata
 ) {
 
+  // TODO:
+  // - check fs, maybe we have pre-indexed this
+  // - add flags, we might have stored index
+  // - index file MUST have "version", so we can detect if we need to rebuild
+  // - then 8-byte (PALLOC_OFFSET) ordered list of entries
+
   // Find if the index already exists
   struct qe_index *idx = instance->index;
   while(idx) {
