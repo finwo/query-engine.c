@@ -3,5 +3,6 @@
 *.o
 /lib/
 /.cache/
+/compile_commands.json
 
 /query-engine-test

@@ -21,14 +21,12 @@ struct query_engine_t {
   PALLOC_FD fd;
   struct buf * (*serialize)(void *, void *);
   void       * (*deserialize)(struct buf *, void *);
-  void         (*purge)(void *);
+  void         (*purge)(void *, void *);
   void       * index;
   void       * udata;
 };
 
-
-
-struct query_engine_t * qe_init(const char **filename, struct buf * (*serialize)(void *), void * (*deserialize)(struct buf *, void*), void (*purge)(void*, void*), void *udata);
+struct query_engine_t * qe_init(const char *filename, struct buf * (*serialize)(void *, void *), void * (*deserialize)(struct buf *, void*), void (*purge)(void*, void*), void *udata, PALLOC_FLAGS flags);
 QUERY_ENGINE_RETURN_CODE qe_close(struct query_engine_t *instance);
 
 QUERY_ENGINE_RETURN_CODE qe_index_add(struct query_engine_t *instance, const char *name, int (*cmp)(void *a, void *b, void *udata_qe, void *udata_index), void *udata);

@@ -11,6 +11,9 @@ override LDFLAGS?=-s
 
 include lib/.dep/config.mk
 
+override CFLAGS+=$(INCLUDES)
+override CFLAGS+=-Isrc
+
 OBJ=$(SRC:.c=.o)
 
 .PHONY: default
