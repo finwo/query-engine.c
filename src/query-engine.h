@@ -19,19 +19,21 @@ extern "C" {
 
 struct query_engine_t {
   PALLOC_FD fd;
-  struct buf * (*serialize)(void *, void *);
-  void       * (*deserialize)(struct buf *, void *);
-  void         (*purge)(void *, void *);
-  void       * index;
-  void       * udata;
+  const struct buf * (*serialize)(void *, void *);
+  const void       * (*deserialize)(struct buf *, void *);
+  const void         (*purge)(void *, void *);
+  void             * index;
+  void             * udata;
 };
 
-struct query_engine_t * qe_init(const char *filename, struct buf * (*serialize)(void *, void *), void * (*deserialize)(struct buf *, void*), void (*purge)(void*, void*), void *udata, PALLOC_FLAGS flags);
+struct query_engine_t * qe_init(const char *filename, const struct buf * (*serialize)(void *, void *), const void * (*deserialize)(struct buf *, void*), const void (*purge)(void*, void*), void *udata, PALLOC_FLAGS flags);
 QUERY_ENGINE_RETURN_CODE qe_close(struct query_engine_t *instance);
 
-QUERY_ENGINE_RETURN_CODE qe_index_add(struct query_engine_t *instance, const char *name, int (*cmp)(void *a, void *b, void *udata_qe, void *udata_index), void *udata);
+QUERY_ENGINE_RETURN_CODE qe_index_add(struct query_engine_t *instance, const char *name, const int (*cmp)(const void *a, const void *b, void *udata_qe, void *udata_index), void *udata);
 QUERY_ENGINE_RETURN_CODE qe_index_del(struct query_engine_t *instance, const char *name);
 
+void * qe_set(struct query_engine_t *instance, void *entry);
+QUERY_ENGINE_RETURN_CODE qe_del(struct query_engine_t *instance, void *entry);
 void * qe_query_run(struct query_engine_t *instance, const char *index, void *pattern);
 
 #ifdef __cplusplus
