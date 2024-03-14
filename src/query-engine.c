@@ -103,7 +103,8 @@ int cmp_internal(const void *a, const void *b, void *idx) {
     buf_a->data = malloc(buf_a->cap);
     seek_os(index->qe->fd, entry_a->ptr, SEEK_SET);
     if (read_os(index->qe->fd, buf_a->data, buf_a->len) != buf_a->len) {
-      // TODO: cleanup
+      buf_clear(buf_a);
+      free(buf_a);
       return 0;
     }
     hydrated_a = index->qe->serialize(buf_a, index->qe->udata);
@@ -115,7 +116,12 @@ int cmp_internal(const void *a, const void *b, void *idx) {
     buf_b->data = malloc(buf_b->cap);
     seek_os(index->qe->fd, entry_b->ptr, SEEK_SET);
     if (read_os(index->qe->fd, buf_b->data, buf_b->len) != buf_b->len) {
-      // TODO: cleanup
+      if (!(entry_a->hydrated)) {
+        buf_clear(buf_a);
+        free(buf_a);
+      }
+      buf_clear(buf_b);
+      free(buf_b);
       return 0;
     }
     hydrated_b = index->qe->serialize(buf_b, index->qe->udata);
