@@ -187,14 +187,9 @@ QUERY_ENGINE_RETURN_CODE qe_index_add(
   struct query_engine_t *instance,
   const char *name,
   int (*cmp)(const void *a, const void *b, void *udata_qe, void *udata_index),
+  const char *filename,
   void *udata
 ) {
-
-  // TODO:
-  // - check fs, maybe we have pre-indexed this
-  // - add flags, we might have stored index
-  // - index file MUST have "version", so we can detect if we need to rebuild
-  // - then 8-byte (PALLOC_OFFSET) ordered list of entries
 
   // Find if the index already exists
   struct qe_index *idx = instance->index;
@@ -207,19 +202,28 @@ QUERY_ENGINE_RETURN_CODE qe_index_add(
     return QUERY_ENGINE_RETURN_ERR;
   }
 
+  // Initialize the index & register id
   idx = calloc(1, sizeof(struct qe_index));
   idx->next       = instance->index;
   idx->name       = strdup(name);
   idx->udata      = udata;
   idx->cmp        = cmp;
   idx->qe         = instance;
-
   idx->mindex = mindex_init(cmp_internal, purge_internal, idx);
   if (!idx->mindex) {
     free(idx->name);
     free(idx);
     return QUERY_ENGINE_RETURN_ERR;
   }
+
+
+
+  // TODO:
+  // - check fs, maybe we have pre-indexed this
+  // - add flags, we might have stored index
+  // - index file MUST have "version", so we can detect if we need to rebuild
+  // - then 8-byte (PALLOC_OFFSET) ordered list of entries
+
 
   // TODO: scan palloc & add to mindex
 
