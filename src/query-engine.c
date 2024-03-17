@@ -73,15 +73,6 @@ struct qe_index_entry {
   void *hydrated;
 };
 
-/* struct query_engine_t { */
-/*   PALLOC_FD fd; */
-/*   struct buf * (*serialize)(void *, void *); */
-/*   void       * (*deserialize)(struct buf *, void *); */
-/*   void         (*purge)(void *); */
-/*   void       * index; */
-/*   void       * udata; */
-/* }; */
-
 // Read from medium, cmp, free deserialized entries
 int cmp_internal(const void *a, const void *b, void *idx) {
   struct qe_index       *index   = (struct qe_index *)idx;
@@ -107,8 +98,9 @@ int cmp_internal(const void *a, const void *b, void *idx) {
       free(buf_a);
       return 0;
     }
-    hydrated_a = index->qe->serialize(buf_a, index->qe->udata);
+    hydrated_a = index->qe->deserialize(buf_a, index->qe->udata);
   }
+
   if (!(entry_b->hydrated)) {
     buf_b       = calloc(1, sizeof(struct buf));
     buf_b->cap  = palloc_size(index->qe->fd, entry_b->ptr);
@@ -124,7 +116,7 @@ int cmp_internal(const void *a, const void *b, void *idx) {
       free(buf_b);
       return 0;
     }
-    hydrated_b = index->qe->serialize(buf_b, index->qe->udata);
+    hydrated_b = index->qe->deserialize(buf_b, index->qe->udata);
   }
 
   // Run the actual comparison
@@ -187,7 +179,6 @@ QUERY_ENGINE_RETURN_CODE qe_index_add(
   struct query_engine_t *instance,
   const char *name,
   int (*cmp)(const void *a, const void *b, void *udata_qe, void *udata_index),
-  const char *filename,
   void *udata
 ) {
 
@@ -198,7 +189,7 @@ QUERY_ENGINE_RETURN_CODE qe_index_add(
     idx = idx->next;
   }
   if (idx) {
-    /* fprintf(stderr,"Duplicate index '%s'", name); */
+    fprintf(stderr,"Duplicate index '%s'", name);
     return QUERY_ENGINE_RETURN_ERR;
   }
 
@@ -216,14 +207,16 @@ QUERY_ENGINE_RETURN_CODE qe_index_add(
     return QUERY_ENGINE_RETURN_ERR;
   }
 
-
-
-  // TODO:
-  // - check fs, maybe we have pre-indexed this
-  // - add flags, we might have stored index
-  // - index file MUST have "version", so we can detect if we need to rebuild
-  // - then 8-byte (PALLOC_OFFSET) ordered list of entries
-
+  // Scan entries and add to the index
+  PALLOC_OFFSET entry = 0;
+  struct qe_index_entry *idx_entry;
+  while(1) {
+    entry = palloc_next(instance->fd, entry);
+    if (!entry) break;
+    idx_entry      = calloc(1, sizeof(struct qe_index_entry));
+    idx_entry->ptr = entry;
+    mindex_set(idx->mindex, idx_entry);
+  }
 
   // TODO: scan palloc & add to mindex
 
@@ -241,7 +234,6 @@ QUERY_ENGINE_RETURN_CODE qe_index_del(struct query_engine_t *instance, const cha
     idx      = idx->next;
   }
   if (!idx) {
-    /* fprintf(stderr,"Duplicate index '%s'", name); */
     return QUERY_ENGINE_RETURN_OK;
   }
 
