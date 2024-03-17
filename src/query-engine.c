@@ -153,7 +153,7 @@ void purge_internal(void *sub, void *idx) {
   // Done
 }
 
-struct query_engine_t * qe_init(const char *filename, struct buf * (*serialize)(void *, void *), void * (*deserialize)(struct buf *, void*), void (*purge)(void*, void*), void *udata, PALLOC_FLAGS flags) {
+struct query_engine_t * qe_init(const char *filename, struct buf * (*serialize)(const void *, void *), void * (*deserialize)(const struct buf *, void*), void (*purge)(void*, void*), void *udata, PALLOC_FLAGS flags) {
   struct query_engine_t *instance = calloc(1, sizeof(struct query_engine_t));
 
   // Build our response
@@ -189,7 +189,7 @@ QUERY_ENGINE_RETURN_CODE qe_index_add(
     idx = idx->next;
   }
   if (idx) {
-    fprintf(stderr,"Duplicate index '%s'", name);
+    /* fprintf(stderr,"Duplicate index '%s'", name); */
     return QUERY_ENGINE_RETURN_ERR;
   }
 
@@ -217,8 +217,6 @@ QUERY_ENGINE_RETURN_CODE qe_index_add(
     idx_entry->ptr = entry;
     mindex_set(idx->mindex, idx_entry);
   }
-
-  // TODO: scan palloc & add to mindex
 
   instance->index = idx;
   return QUERY_ENGINE_RETURN_OK;
@@ -256,13 +254,16 @@ QUERY_ENGINE_RETURN_CODE qe_index_del(struct query_engine_t *instance, const cha
   return QUERY_ENGINE_RETURN_OK;
 }
 
-QUERY_ENGINE_RETURN_CODE qe_set(struct query_engine_t *instance, void *entry) {
+QUERY_ENGINE_RETURN_CODE qe_set(struct query_engine_t *instance, const void *entry) {
   if (!(instance->index)) {
     return QUERY_ENGINE_RETURN_ERR;
   }
 
   // Turn into something we can write to disk
   struct buf *serialized = instance->serialize(entry, instance->udata);
+  if (!serialized) {
+    return QUERY_ENGINE_RETURN_ERR;
+  }
 
   // Reserve persistent allocation
   PALLOC_OFFSET off = palloc(instance->fd, serialized->len);
@@ -285,11 +286,11 @@ QUERY_ENGINE_RETURN_CODE qe_set(struct query_engine_t *instance, void *entry) {
   buf_clear(serialized);
   free(serialized);
 
-  struct qe_index_entry *index_entry = calloc(1, sizeof(struct qe_index_entry));
-  index_entry->ptr                   = off;
 
   // Add to all indexes
   // (auto-purges if duplicate found)
+  struct qe_index_entry *index_entry = calloc(1, sizeof(struct qe_index_entry));
+  index_entry->ptr                   = off;
   struct qe_index *idx = instance->index;
   while(idx) {
     mindex_set(idx->mindex, index_entry);
@@ -299,7 +300,11 @@ QUERY_ENGINE_RETURN_CODE qe_set(struct query_engine_t *instance, void *entry) {
   return QUERY_ENGINE_RETURN_OK;
 }
 
-QUERY_ENGINE_RETURN_CODE qe_del(struct query_engine_t *instance, void *entry) {
+QUERY_ENGINE_RETURN_CODE qe_del(struct query_engine_t *instance, const void *pattern) {
+  struct qe_index       *idx   = NULL;
+  for( idx = instance->index ; idx ; idx = idx->next ) {
+    mindex_delete(idx->mindex, pattern);
+  }
   return QUERY_ENGINE_RETURN_OK;
 }
 

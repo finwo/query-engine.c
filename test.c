@@ -17,7 +17,7 @@ struct entry {
   struct buf *data;
 };
 
-struct buf * serialize(void *entry_raw, void *udata) {
+struct buf * serialize(const void *entry_raw, void *udata) {
   ASSERT("_ser:: QE userdata is correct", udata == QEUD_A) NULL;
   struct entry *entry = (struct entry *)entry_raw;
   struct buf   *output = calloc(1, sizeof(struct buf));
@@ -27,7 +27,7 @@ struct buf * serialize(void *entry_raw, void *udata) {
   return output;
 }
 
-void * deserialize(struct buf *raw, void *udata) {
+void * deserialize(const struct buf *raw, void *udata) {
   ASSERT("_des:: QE userdata is correct", udata == QEUD_A) NULL;
   struct entry *output = calloc(1, sizeof(struct entry));
   struct buf   *dupped = calloc(1, sizeof(struct buf));
