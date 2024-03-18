@@ -1,6 +1,7 @@
 SRC=$(wildcard src/*.c)
 CC?=gcc
 
+
 BIN=\
 	benchmark \
 	test
@@ -10,6 +11,12 @@ HEAD=$(shell command -v ghead head | head -1)
 
 override CFLAGS?=-Wall -O2
 override LDFLAGS?=-s
+
+ifeq ($(OS),Windows_NT)
+  SUFFIX?=.exe
+else
+  SUFFIX?=
+endif
 
 include lib/.dep/config.mk
 
@@ -26,12 +33,17 @@ default: README.md ${BIN}
 .c.o:
 	$(CC) $< $(CFLAGS) -c -o $@
 
+.PHONY: ${BIN}
 ${BIN}: ${OBJ} ${BINO} src/query-engine.h
-	${CC} -Isrc ${INCLUDES} ${CFLAGS} -o $@ ${@}.o ${OBJ}
+	${CC} -Isrc ${INCLUDES} ${CFLAGS} -o $@${SUFFIX} ${@}.o ${OBJ}
 
 .PHONY: check
 check: ${BIN}
-	./$<
+	./test${SUFFIX}
+
+.PHONY: bmark
+bmark: ${BIN}
+	./benchmark${SUFFIX}
 
 .PHONY: clean
 clean:
