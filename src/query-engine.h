@@ -34,7 +34,7 @@ QUERY_ENGINE_RETURN_CODE qe_index_del(struct query_engine_t *instance, const cha
 
 QUERY_ENGINE_RETURN_CODE qe_set(struct query_engine_t *instance, const void *entry);
 QUERY_ENGINE_RETURN_CODE qe_del(struct query_engine_t *instance, const void *pattern);
-void * qe_query_run(struct query_engine_t *instance, const char *index, void *pattern);
+void * qe_get(struct query_engine_t *instance, const char *index, void *pattern);
 
 #ifdef __cplusplus
 } // extern "C"

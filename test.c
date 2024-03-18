@@ -3,6 +3,7 @@ extern "C" {
 #endif
 
 #include <string.h>
+#include <time.h>
 
 #include "finwo/assert.h"
 #include "tidwall/buf.h"
@@ -51,6 +52,7 @@ int cmp(const void *a, const void *b, void *udata_qe, void *udata_idx) {
 }
 
 void purge(void *entry_raw, void *udata) {
+  ASSERT("_pur:: QE userdata is correct", udata == QEUD_A);
   struct entry *entry = (struct entry *)entry_raw;
   if (entry->name) free(entry->name);
   if (entry->data) {
@@ -58,6 +60,16 @@ void purge(void *entry_raw, void *udata) {
     free(entry->data);
   }
   free(entry);
+}
+
+const char *alphabet = "0123456789abcdef";
+char *random_str(int len) {
+  if (!len) len = 16;
+  char *output  = calloc(len + 1, sizeof(char));
+  for(int i=0 ; i < len ; i++) {
+    output[i] = alphabet[rand() % 16];
+  }
+  return output;
 }
 
 void test_main() {
@@ -70,15 +82,44 @@ void test_main() {
   ASSERT("Removing non-existing index returns OK", qe_index_del(qe, "nam") == QUERY_ENGINE_RETURN_OK);
   ASSERT("Re-adding 'nam' index return OK"       , qe_index_add(qe, "nam", &cmp, QEUD_B) == QUERY_ENGINE_RETURN_OK );
 
+  // Build random entry
   struct entry *e_00 = calloc(1, sizeof(struct entry));
-  e_00->name = strdup("pizza");
-  e_00->data = calloc(1, sizeof(struct buf));
-  buf_append(e_00->data, "calzone", 8);
-
+  e_00->name         = random_str(8);
+  e_00->data         = calloc(1, sizeof(struct buf));
+  e_00->data->len    = e_00->data->cap = 4;
+  e_00->data->data   = random_str(e_00->data->len - 1);
   qe_set(qe, e_00);
+
+  // Build search pattern for that entry
+  struct entry *p_00 = &(struct entry){
+    .name = e_00->name,
+  };
+
+  // And retrieve it
+  struct entry *f_00 = qe_get(qe, "nam", p_00);
+
+  // Validate response
+  ASSERT("get returns the non-null on known good key"                  , f_00 != NULL                                  );
+  ASSERT("get returns the a new instance, not old instance"            , f_00 != e_00                                  );
+  ASSERT("get returns the a new instance, not the pattern"             , f_00 != p_00                                  );
+  ASSERT("key of new entry matches"                                    , strcmp(f_00->name, e_00->name) == 0           );
+  ASSERT("retrieved entry has larger buffer due to minimum palloc size", f_00->data->len == 16 - strlen(e_00->name) - 1);
+
+  // Search pattern for non-existing entry
+  struct entry *p_01 = &(struct entry){
+    .name = random_str(8),
+  };
+
+  // And retrieve it
+  struct entry *f_01 = qe_get(qe, "nam", p_01);
+  ASSERT("get returns the null on known missing key", f_01 == NULL);
 }
 
 int main() {
+
+  // Seed random
+  srand(time(NULL));
+
   RUN(test_main);
   return TEST_REPORT();
 }

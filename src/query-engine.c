@@ -70,7 +70,7 @@ struct qe_index {
 
 struct qe_index_entry {
   PALLOC_OFFSET ptr;
-  void *hydrated;
+  const void *hydrated;
 };
 
 // Read from medium, cmp, free deserialized entries
@@ -83,8 +83,8 @@ int cmp_internal(const void *a, const void *b, void *idx) {
 
   int result = 0;
 
-  void *hydrated_a = entry_a->hydrated;
-  void *hydrated_b = entry_b->hydrated;
+  void *hydrated_a = (void *)entry_a->hydrated;
+  void *hydrated_b = (void *)entry_b->hydrated;
 
   // Hydrate if needed
   if (!(entry_a->hydrated)) {
@@ -301,15 +301,61 @@ QUERY_ENGINE_RETURN_CODE qe_set(struct query_engine_t *instance, const void *ent
 }
 
 QUERY_ENGINE_RETURN_CODE qe_del(struct query_engine_t *instance, const void *pattern) {
-  struct qe_index       *idx   = NULL;
+  struct qe_index       *idx              = NULL;
+  struct qe_index_entry *pattern_internal = calloc(1, sizeof(struct qe_index_entry));
+  pattern_internal->hydrated              = pattern;
   for( idx = instance->index ; idx ; idx = idx->next ) {
-    mindex_delete(idx->mindex, pattern);
+    mindex_delete(idx->mindex, pattern_internal);
   }
+  free(pattern_internal);
   return QUERY_ENGINE_RETURN_OK;
 }
 
-void * qe_query_run(struct query_engine_t *instance, const char *index, void *pattern) {
-  return NULL;
+void * qe_get(struct query_engine_t *instance, const char *index, void *pattern) {
+  struct qe_index       *idx              = instance->index;
+  struct qe_index_entry *pattern_internal = calloc(1, sizeof(struct qe_index_entry));
+  pattern_internal->hydrated              = pattern;
+  while(idx) {
+    if (strcmp(idx->name, index) == 0) break;
+    idx = idx->next;
+  }
+  if (!idx) {
+    // No such index
+    free(pattern_internal);
+    return NULL;
+  }
+
+  struct qe_index_entry *entry = mindex_get(idx->mindex, pattern_internal);
+  free(pattern_internal);
+  if (!entry) {
+    // Not found
+    return NULL;
+  }
+
+  // Fetch the contents from the medium
+  int n;
+  struct buf *contents = calloc(1, sizeof(struct buf));
+  contents->cap        = palloc_size(instance->fd, entry->ptr);
+  contents->data       = malloc(contents->cap);
+  while(contents->len < contents->cap) {
+    seek_os(instance->fd, entry->ptr + contents->len, SEEK_SET);
+    n = read_os(instance->fd, contents->data + contents->len, contents->cap - contents->len);
+    if (n <= 0) {
+      // Borked
+      buf_clear(contents);
+      free(contents);
+      return NULL;
+    }
+    contents->len += n;
+  }
+
+  // Deserialize by the client
+  void *deserialized = instance->deserialize(contents, instance->udata);
+
+  buf_clear(contents);
+  free(contents);
+
+  return deserialized;
 }
 
 #ifdef __cplusplus

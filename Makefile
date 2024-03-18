@@ -1,7 +1,9 @@
 SRC=$(wildcard src/*.c)
-SRC+=test.c
-BIN?=query-engine-test
 CC?=gcc
+
+BIN=\
+	benchmark \
+	test
 
 TAIL=$(shell command -v gtail tail | head -1)
 HEAD=$(shell command -v ghead head | head -1)
@@ -16,14 +18,16 @@ override CFLAGS+=-Isrc
 
 OBJ=$(SRC:.c=.o)
 
+BINO=$(BIN:=.o)
+
 .PHONY: default
 default: README.md ${BIN}
 
 .c.o:
 	$(CC) $< $(CFLAGS) -c -o $@
 
-${BIN}: ${OBJ} src/query-engine.h
-	${CC} -Isrc ${INCLUDES} ${CFLAGS} -o $@ ${OBJ}
+${BIN}: ${OBJ} ${BINO} src/query-engine.h
+	${CC} -Isrc ${INCLUDES} ${CFLAGS} -o $@ ${@}.o ${OBJ}
 
 .PHONY: check
 check: ${BIN}

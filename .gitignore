@@ -5,5 +5,6 @@
 /.cache/
 /compile_commands.json
 
-/query-engine-test
-/pizza.db
+/test
+/benchmark
+/*.db
