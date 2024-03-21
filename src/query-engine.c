@@ -172,6 +172,11 @@ struct query_engine_t * qe_init(const char *filename, struct buf * (*serialize)(
 }
 
 QUERY_ENGINE_RETURN_CODE qe_close(struct query_engine_t *instance) {
+  if (!instance) return QUERY_ENGINE_RETURN_OK;
+
+  palloc_close(instance->fd);
+  free(instance);
+
   return QUERY_ENGINE_RETURN_OK;
 }
 
